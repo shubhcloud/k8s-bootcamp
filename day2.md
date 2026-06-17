@@ -73,3 +73,101 @@ kubectl label pod webserver env-
 ```
 kubectl delete pod -l app=nginx -n dev
 ```
+# ReplicaSet
+
+- create **rs.yaml**
+```
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: web-replica
+  namespace: prod
+  labels:
+    app: webapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      role: web
+    matchExpressions:
+      - key: version
+        operator: In
+        values: [v1, v2, v3]
+  template:
+    metadata:
+      name: web
+      labels:
+        role: web
+        version: v1
+        tier: front
+    spec:
+      containers:
+      - name: web
+        image: nginx
+        ports:
+        - containerPort: 80
+          protocol: TCP
+```
+# List and inspect the replicaset
+- To list the replicaset
+```
+kubectl get rs <rs name>
+```
+- To inspect replicaset
+```
+kubectl describe rs <rs name>
+```
+### Update number of replicas
+- You can change the number of replicas in the yaml file and re-apply the yaml file
+- Or you can use ad-hoc command to update the number of replicas
+```
+kubectl scale --replicas=5 replicaset/<rs name>
+```
+
+# Deployment
+
+**deployment.yaml**
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: myapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: my-app-container
+        image: nginx:1.21.1
+        ports:
+        - containerPort: 80
+```
+## Creating and managing Deployments
+- Using Ad-hoc commands
+```
+kubectl create deployment httpd-deploy --image=httpd
+```
+- List the deployments
+```
+kubectl get deploy <deployment name>
+```
+- Inspecting deployments
+```
+kubectl describe deployment <deployment name>
+```
+- Setting New image for deployments
+```
+kubectl set image deployment/my-nginx nginx=nginx:1.21
+```
+- Scalling the deployments
+```
+kubectl scale deployment my-nginx --replicas=5
+```
