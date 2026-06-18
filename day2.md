@@ -171,3 +171,60 @@ kubectl set image deployment/my-nginx nginx=nginx:1.21
 ```
 kubectl scale deployment my-nginx --replicas=5
 ```
+# DaemonSet
+
+**ds.yaml**
+
+```
+apiVersion: apps/v1
+kind: DeamonSet
+metadata:
+  name: nginx-ds
+  labels:
+    app: myapp
+spec:
+  selector:
+    matchLabels:
+      app: myapp
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+```
+- List DeamonSet
+```
+kubectl get ds
+```
+- Describe DeamonSet
+```
+kubectl describe ds <deamonset name>
+```
+- Change image
+```
+kubectl set image ds/nginx nginx=nginx:1.25.5
+```
+- Check currently which image is running in the deployment
+```
+kubectl describe ds nginx-ds |grep image
+```
+### Add worker node
+- we need to add one more worker node in our cluster to check whether the deamonset will launch another copy of a pod in that newly added worker node.
+- So to add the worker node we can use cli commmand.
+```
+az aks nodepool scale \
+  --resource-group <RESOURCE_GROUP> \
+  --cluster-name <AKS_CLUSTER_NAME> \
+  --name userpool \
+  --node-count 3
+```
+Once the worker node is added then you can see the pod will be launched in the newly created node as well.
