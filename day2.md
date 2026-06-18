@@ -171,6 +171,80 @@ kubectl set image deployment/my-nginx nginx=nginx:1.21
 ```
 kubectl scale deployment my-nginx --replicas=5
 ```
+# Init Container
+
+**First apply init-pod.yaml**
+
+In the command args we are running one while loop that will check for Redis service on port 6379 and send the ping request every 10 seconds once it gets the pong response, it will allow the main container to start. So to get the pong request we need to apply redis.yaml file so that the init container gets executed successfully.
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis-init-pod
+  labels:
+    app: myapp  
+spec:
+  initContainers:
+  - name: redis-init
+    image: aqualyte/redis-alpine
+    args:
+    - sh
+    - -c
+    - while true; do STATUS=$(redis-cli -h redis-service -p 6379 ping); if [ $STATUS = "PONG" ]; then echo "Connected"; break; else echo "Not connected"; fi; sleep 10; done
+  containers:
+  - name: main-container
+    image: nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice
+spec:
+  selector:
+    app: myapp
+  ports:
+  - protocol: TCP
+    port: 80
+  type: NodePort
+```
+**Then apply redis.yaml**
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis-server
+  labels:
+    role: cache-server
+spec:
+  containers:
+  - name: redis-server
+    image: redis
+    ports:
+    - containerPort: 6379
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  labels:
+    role: redis-service
+spec:
+  selector:
+    role: cache-server
+  type: ClusterIP
+  ports:
+  - port: 6379
+```
+- First we need to apply init-pod.yaml
+```
+Kubectl apply -f init-pod.yaml
+```
+- After that apply the redis.yaml
+```
+kubectl apply -f redis.yaml
+```
 # DaemonSet
 
 **ds.yaml**
@@ -219,12 +293,12 @@ kubectl describe ds nginx-ds |grep image
 ```
 ### Add worker node
 - we need to add one more worker node in our cluster to check whether the deamonset will launch another copy of a pod in that newly added worker node.
-- So to add the worker node we can use cli commmand.
+- So to add the worker node we can use cli commmand. Once the worker node is added then you can see the pod will be launched in the newly created node as well.
 ```
 az aks nodepool scale \
-  --resource-group <RESOURCE_GROUP> \
-  --cluster-name <AKS_CLUSTER_NAME> \
+  --resource-group k8s-bootcamp \
+  --cluster-name k8s-bootcamp \
   --name userpool \
   --node-count 3
 ```
-Once the worker node is added then you can see the pod will be launched in the newly created node as well.
+
