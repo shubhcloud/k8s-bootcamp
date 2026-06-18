@@ -12,7 +12,7 @@ az group create --name k8s-bootcamp --location centralindia
 ```
 az aks create \
   --resource-group k8s-bootcamp \
-  --name bootcamp-cluster \
+  --name k8s-bootcamp \
   --node-count 2 \
   --node-vm-size Standard_DS2_v2 \
   --network-policy calico \
