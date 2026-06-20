@@ -124,6 +124,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: ""
   resources:
     requests:
       storage: 5Gi
@@ -256,11 +257,23 @@ Static PV Demo
 
 ---
 
-## Step 8: Verify Azure Disk Still Exists
+## Step 8: Make the disk full
 
-```bash
-az disk list -o table
+- Go inside the pod
 ```
+kubectl exec -it <pod-name> -- bash
+```
+- And add this file under /data
+```
+yes "Kubernetes Storage Demo" | head -c 2147483648 > /data/2gb.txt
+```
+- Check the disk space now. it Should be full
+```
+df -h
+```
+- when you attach the azure disk and create the PV from it. During creation kuberntes will not verify the actuall size of the azure disk. so it will simply create the PV even greater then size of the Disk.
+- Now the real problem occurs when the mounted directry starts consuming more disk space. Then you cant create more files into that directry. so This mismatch usally happens when you create the PV manually.
+- SO to avouid such situationss, you have to plan and based on the application requirement you have to create disk with more disk space. So that this mismatch wont happen.
 
 ---
 
