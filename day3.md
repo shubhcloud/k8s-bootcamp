@@ -294,11 +294,14 @@ kubectl describe ds nginx-ds |grep image
 ### Add worker node
 - we need to add one more worker node in our cluster to check whether the deamonset will launch another copy of a pod in that newly added worker node.
 - So to add the worker node we can use cli commmand. Once the worker node is added then you can see the pod will be launched in the newly created node as well.
+
+**Note: Check the nodepool name before scalling**
+
 ```
 az aks nodepool scale \
   --resource-group k8s-bootcamp \
   --cluster-name k8s-bootcamp \
-  --name userpool \
+  --name nodepool1 \
   --node-count 3
 ```
 
