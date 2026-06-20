@@ -85,10 +85,10 @@ spec:
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-   csi:
-    driver: disk.csi.azure.com
-    volumeHandle: /subscriptions/9245f5f4-c6a9-4e3a-a8ed-443681bcdf1a/resourceGroups/MC_k8s-bootcamp_k8s-bootcamp_centralindia/providers/Microsoft.Compute/disks/demo-pv-disk
-    fsType: ext4
+  csi:
+   driver: disk.csi.azure.com
+   volumeHandle: /subscriptions/9245f5f4-c6a9-4e3a-a8ed-443681bcdf1a/resourceGroups/MC_k8s-bootcamp_k8s-bootcamp_centralindia/providers/Microsoft.Compute/disks/demo-pv-disk
+   fsType: ext4
 ```
 
 Apply:
