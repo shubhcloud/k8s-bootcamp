@@ -251,7 +251,7 @@ kubectl apply -f redis.yaml
 
 ```
 apiVersion: apps/v1
-kind: DeamonSet
+kind: DaemonSet
 metadata:
   name: nginx-ds
   labels:
