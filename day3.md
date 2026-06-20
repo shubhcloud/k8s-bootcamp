@@ -183,7 +183,7 @@ kind: Pod
 metadata:
   name: redis-init-pod
   labels:
-    app: myapp  
+    app: initapp  
 spec:
   initContainers:
   - name: redis-init
@@ -202,7 +202,7 @@ metadata:
   name: myservice
 spec:
   selector:
-    app: myapp
+    app: initapp
   ports:
   - protocol: TCP
     port: 80
