@@ -32,8 +32,8 @@ Deployment (1 Replica)
 
 ```bash
 az aks show \
-  --resource-group aks-rg \
-  --name aks-cluster \
+  --resource-group k8s-bootcamp \
+  --name k8s-bootcamp \
   --query nodeResourceGroup \
   -o tsv
 ```
@@ -41,7 +41,7 @@ az aks show \
 Example Output:
 
 ```text
-MC_aks-rg_aks-cluster_eastus
+MC_k8s-bootcamp_k8s-bootcamp_centralindia
 ```
 
 ---
@@ -50,9 +50,9 @@ MC_aks-rg_aks-cluster_eastus
 
 ```bash
 az disk create \
-  --resource-group MC_aks-rg_aks-cluster_eastus \
+  --resource-group MC_k8s-bootcamp_k8s-bootcamp_centralindia \
   --name demo-pv-disk \
-  --size-gb 10 \
+  --size-gb 2 \
   --sku StandardSSD_LRS
 ```
 
@@ -60,7 +60,7 @@ Get Disk ID:
 
 ```bash
 az disk show \
-  --resource-group MC_aks-rg_aks-cluster_eastus \
+  --resource-group MC_k8s-bootcamp_k8s-bootcamp_centralindia \
   --name demo-pv-disk \
   --query id \
   -o tsv
@@ -82,12 +82,9 @@ metadata:
 spec:
   capacity:
     storage: 10Gi
-
   accessModes:
     - ReadWriteOnce
-
   persistentVolumeReclaimPolicy: Retain
-
   azureDisk:
     diskName: demo-pv-disk
     diskURI: <PASTE_DISK_ID_HERE>
@@ -128,11 +125,9 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-
   resources:
     requests:
       storage: 5Gi
-
   volumeName: demo-pv
 ```
 
@@ -169,25 +164,20 @@ metadata:
   name: static-storage-demo
 spec:
   replicas: 1
-
   selector:
     matchLabels:
       app: static-storage-demo
-
   template:
     metadata:
       labels:
         app: static-storage-demo
-
     spec:
       containers:
       - name: nginx
         image: nginx
-
         volumeMounts:
         - name: storage
           mountPath: /data
-
       volumes:
       - name: storage
         persistentVolumeClaim:
@@ -302,16 +292,11 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: demo-storageclass
-
 provisioner: disk.csi.azure.com
-
 parameters:
   skuName: StandardSSD_LRS
-
 reclaimPolicy: Retain
-
 allowVolumeExpansion: true
-
 volumeBindingMode: WaitForFirstConsumer
 ```
 
@@ -341,9 +326,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-
   storageClassName: demo-storageclass
-
   resources:
     requests:
       storage: 5Gi
@@ -388,25 +371,20 @@ metadata:
   name: dynamic-storage-demo
 spec:
   replicas: 1
-
   selector:
     matchLabels:
       app: dynamic-storage-demo
-
   template:
     metadata:
       labels:
         app: dynamic-storage-demo
-
     spec:
       containers:
       - name: nginx
         image: nginx
-
         volumeMounts:
         - name: storage
           mountPath: /data
-
       volumes:
       - name: storage
         persistentVolumeClaim:
@@ -566,7 +544,7 @@ Delete Azure Disk:
 
 ```bash
 az disk delete \
-  --resource-group MC_aks-rg_aks-cluster_eastus \
+  --resource-group MC_k8s-bootcamp_k8s-bootcamp_centralindia \
   --name demo-pv-disk \
   --yes
 ```
