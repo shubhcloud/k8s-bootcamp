@@ -85,10 +85,9 @@ spec:
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  azureDisk:
-    diskName: demo-pv-disk
-    diskURI: <PASTE_DISK_ID_HERE>
-    cachingMode: None
+   csi:
+    driver: disk.csi.azure.com
+    volumeHandle: /subscriptions/9245f5f4-c6a9-4e3a-a8ed-443681bcdf1a/resourceGroups/MC_k8s-bootcamp_k8s-bootcamp_centralindia/providers/Microsoft.Compute/disks/demo-pv-disk
     fsType: ext4
 ```
 
