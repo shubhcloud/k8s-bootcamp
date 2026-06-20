@@ -122,6 +122,21 @@ kubectl apply -f nodeport.yaml
 ### Access the application
 - To access the application, you can copy the public IP of your worker node and run it in a browser with the port.
 
+### Open port in NSG node pool
+- create this nsg rule. chneg the node pool name.
+```
+az network nsg rule create \
+  --resource-group MC_k8s-bootcamp_k8s-bootcamp_centralindia \
+  --nsg-name aks-agentpool-38176340-nsg \
+  --name Allow-NodePort-32001 \
+  --priority 300 \
+  --direction Inbound \
+  --access Allow \
+  --protocol Tcp \
+  --source-address-prefixes Internet \
+  --destination-port-ranges 32001
+```
+
 **First delete all the resource of clusterip demo then move forword to Nodeport**
 
 # LoadBalancer
