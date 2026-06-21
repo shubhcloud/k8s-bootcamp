@@ -1236,21 +1236,604 @@ Delete Secret:
 kubectl delete secret app-secret
 ```
 
+# Kubernetes Stateless vs Stateful Applications Demo Lab
+
+## Objective
+
+This lab demonstrates:
+
+* Stateless Applications
+* Stateful Applications
+* Deployments
+* StatefulSets
+* Headless Services
+* Stable Network Identity
+* Stable Storage
+* Persistent Volumes
+* Persistent Volume Claims
+* Ordered Scaling
+* Ordered Pod Creation
+* Ordered Pod Deletion
+* Data Persistence
+
+---
+
+# Architecture Overview
+
+## Stateless Application
+
+```text
+Deployment
+    │
+    ▼
+Pod-A
+Pod-B
+Pod-C
+
+Pods are interchangeable
+No persistent identity
+No persistent storage
+```
+
+---
+
+## Stateful Application
+
+```text
+Headless Service
+        │
+        ▼
+StatefulSet
+        │
+ ┌──────┼──────┐
+ ▼      ▼      ▼
+
+mysql-0 mysql-1 mysql-2
+
+ ▼        ▼       ▼
+
+PVC-0   PVC-1   PVC-2
+
+ ▼        ▼       ▼
+
+Disk-0  Disk-1  Disk-2
+```
+
+# Stateful Application Demo
+
+# Step 1 - Create Secret
+
+## mysql-secret.yaml
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: Password@123
+```
+
+**Apply:**
+
+```bash
+kubectl apply -f mysql-secret.yaml
+```
+
+Verify:
+
+```bash
+kubectl get secret
+```
+
+# Step 2 - Create Headless Service
+
+## mysql-headless-service.yaml
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+
+spec:
+  clusterIP: None
+
+  selector:
+    app: mysql
+
+  ports:
+  - port: 3306
+    name: mysql
+```
+
+**Apply:**
+
+```bash
+kubectl apply -f mysql-headless-service.yaml
+```
+
+Verify:
+
+```bash
+kubectl get svc
+```
+
+Expected:
+
+```text
+mysql   ClusterIP   None
+```
+
+# Step 3 - Create StatefulSet
+
+## mysql-statefulset.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  serviceName: mysql
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_ROOT_PASSWORD
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: managed-csi
+      resources:
+        requests:
+          storage: 5Gi
+```
+
+**Apply:**
+
+```bash
+kubectl apply -f mysql-statefulset.yaml
+```
+
+---
+
+# Verify StatefulSet
+
+```bash
+kubectl get statefulsets
+```
+
+```bash
+kubectl get pods
+```
+
+Expected:
+
+```text
+mysql-0
+mysql-1
+```
+
+Notice:
+
+```text
+Predictable pod names
+```
+
+---
+
+# Demonstrate Ordered Creation
+
+Delete StatefulSet:
+
+```bash
+kubectl delete statefulset mysql
+```
+
+Recreate:
+
+```bash
+kubectl apply -f mysql-statefulset.yaml
+```
+
+Watch:
+
+```bash
+kubectl get pods -w
+```
+
+Observe:
+
+```text
+mysql-0
+    ↓
+mysql-1
+```
+
+Pods start sequentially.
+
+---
+
+# Verify PVC Creation
+
+```bash
+kubectl get pvc
+```
+
+Expected:
+
+```text
+mysql-data-mysql-0
+mysql-data-mysql-1
+```
+
+Observation:
+
+```text
+One Pod
+    ↓
+One PVC
+```
+
+---
+
+# Verify Persistent Volumes
+
+```bash
+kubectl get pv
+```
+
+Observe:
+
+```text
+One PV per MySQL Pod
+```
+
+---
+
+# Verify Azure Disks
+
+```bash
+az disk list -o table
+```
+
+Observe:
+
+```text
+Multiple Azure Managed Disks
+```
+
+---
+
+# Insert Data
+
+Connect to MySQL:
+
+```bash
+kubectl exec -it mysql-0 -- mysql -uroot -p
+```
+
+Password:
+
+```text
+Password@123
+```
+
+---
+
+# Create Database
+
+```sql
+CREATE DATABASE bootcamp;
+
+USE bootcamp;
+
+CREATE TABLE students(
+ id INT PRIMARY KEY,
+ name VARCHAR(100)
+);
+
+INSERT INTO students VALUES(1,'John');
+
+SELECT * FROM students;
+```
+
+Expected:
+
+```text
++----+------+
+| id | name |
++----+------+
+| 1  | John |
++----+------+
+```
+
+---
+
+# Demonstrate Stable Identity
+
+Delete Pod:
+
+```bash
+kubectl delete pod mysql-0
+```
+
+Watch:
+
+```bash
+kubectl get pods -w
+```
+
+Expected:
+
+```text
+mysql-0 terminating
+
+mysql-0 creating
+
+mysql-0 running
+```
+
+Notice:
+
+```text
+Same Name
+
+Same Identity
+```
+
+---
+
+# Verify Data Persistence
+
+Reconnect:
+
+```bash
+kubectl exec -it mysql-0 -- mysql -uroot -p
+```
+
+Run:
+
+```sql
+USE bootcamp;
+
+SELECT * FROM students;
+```
+
+Expected:
+
+```text
++----+------+
+| id | name |
++----+------+
+| 1  | John |
++----+------+
+```
+
+Data still exists.
+
+---
+
+# Demonstrate Stable DNS
+
+Verify DNS Resolution:
+
+```bash
+kubectl run dns-test \
+--image=busybox:1.35 \
+-it \
+--rm \
+-- nslookup mysql-0.mysql
+```
+
+Expected:
+
+```text
+Name: mysql-0.mysql
+Address: <pod-ip>
+```
+
+---
+
+Verify:
+
+```bash
+kubectl run dns-test \
+--image=busybox:1.35 \
+-it \
+--rm \
+-- nslookup mysql-1.mysql
+```
+
+Expected:
+
+```text
+Name: mysql-1.mysql
+Address: <pod-ip>
+```
+
+---
+
+# Demonstrate Scaling
+
+Scale Up:
+
+```bash
+kubectl scale statefulset mysql --replicas=3
+```
+
+Verify:
+
+```bash
+kubectl get pods
+```
+
+Expected:
+
+```text
+mysql-0
+mysql-1
+mysql-2
+```
+
+Verify PVC:
+
+```bash
+kubectl get pvc
+```
+
+Expected:
+
+```text
+mysql-data-mysql-2
+```
+
+---
+
+# Demonstrate Ordered Scale Down
+
+Scale Down:
+
+```bash
+kubectl scale statefulset mysql --replicas=1
+```
+
+Observe:
+
+```text
+mysql-2 deleted
+
+mysql-1 deleted
+
+mysql-0 remains
+```
+
+Deletion happens in reverse order.
+
+
+# Troubleshooting Commands
+
+Check StatefulSet:
+
+```bash
+kubectl get statefulsets
+```
+
+Describe StatefulSet:
+
+```bash
+kubectl describe statefulset mysql
+```
+
+Check Pods:
+
+```bash
+kubectl get pods
+```
+
+Check PVCs:
+
+```bash
+kubectl get pvc
+```
+
+Check PVs:
+
+```bash
+kubectl get pv
+```
+
+Check Services:
+
+```bash
+kubectl get svc
+```
+
+Check DNS:
+
+```bash
+kubectl exec -it mysql-0 -- hostname
+```
+
+Check MySQL Logs:
+
+```bash
+kubectl logs mysql-0
+```
+
+---
+
+# Cleanup
+
+Delete StatefulSet:
+
+```bash
+kubectl delete statefulset mysql
+```
+
+Delete Service:
+
+```bash
+kubectl delete service mysql
+```
+
+Delete Secret:
+
+```bash
+kubectl delete secret mysql-secret
+```
+
+Delete PVCs:
+
+```bash
+kubectl delete pvc --all
+```
+
+Verify:
+
+```bash
+kubectl get all
+```
+
 ---
 
 # Key Learning Outcomes
 
-1. What ConfigMaps are.
-2. What Secrets are.
-3. ConfigMap as Environment Variables.
-4. ConfigMap as Mounted Files.
-5. Secret as Environment Variables.
-6. Secret as Mounted Files.
-7. Difference between ConfigMap and Secret.
-8. ConfigMap Volume Auto Updates.
-9. Environment Variables Require Pod Restart.
-10. Understanding CreateContainerConfigError.
-11. Troubleshooting Missing ConfigMaps.
-12. Troubleshooting Missing Secrets.
-13. Real-world Production Rollout Failure Scenario.
+1. Difference between Stateless and Stateful Applications.
+2. Why Deployments are used for Stateless Workloads.
+3. Why StatefulSets are used for Databases.
+4. Purpose of Headless Services.
+5. Stable Pod Identity.
+6. Stable DNS Records.
+7. Stable Storage.
+8. VolumeClaimTemplates.
+9. Ordered Pod Creation.
+10. Ordered Pod Deletion.
+11. Persistent Data Across Pod Recreation.
+12. Real-world MySQL StatefulSet Architecture.
+13. Common StatefulSet Troubleshooting Techniques.
+
 
