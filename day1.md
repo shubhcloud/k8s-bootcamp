@@ -13,11 +13,14 @@ az group create --name k8s-bootcamp --location centralindia
 az aks create \
   --resource-group k8s-bootcamp \
   --name k8s-bootcamp \
+  --kubernetes-version 1.35.5 \
   --node-count 2 \
   --node-vm-size Standard_DS2_v2 \
+  --network-plugin azure \
   --network-policy calico \
   --auto-upgrade-channel none \
   --node-os-upgrade-channel None \
+  --enable-node-public-ip \
   --generate-ssh-keys
 ```
 ### 4. Connect kubectl to the cluster
