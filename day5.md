@@ -592,7 +592,6 @@ kubectl get sc
 7. Reclaim policies (Retain vs Delete).
 8. How Azure Managed Disks are automatically provisioned by AKS.
 
-```
 # Kubernetes ConfigMaps and Secrets Demo Lab
 
 # Step 1: Create ConfigMap
