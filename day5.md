@@ -593,4 +593,665 @@ kubectl get sc
 8. How Azure Managed Disks are automatically provisioned by AKS.
 
 ```
+# Kubernetes ConfigMaps and Secrets Demo Lab
+
+# Step 1: Create ConfigMap
+
+## configmap.yaml
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  APP_NAME: "Kubernetes Bootcamp"
+  ENVIRONMENT: "Development"
+  LOG_LEVEL: "INFO"
+  app.properties: |
+    app.name=Kubernetes Bootcamp
+    environment=Development
+    log.level=INFO
 ```
+
+Apply:
+
+```bash
+kubectl apply -f configmap.yaml
+```
+
+Verify:
+
+```bash
+kubectl get configmap
+
+kubectl describe configmap app-config
+```
+
+Expected:
+
+```text
+NAME
+app-config
+```
+
+---
+
+# Step 2: Create Secret
+
+For demo purposes use stringData.
+
+## secret.yaml
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+type: Opaque
+stringData:
+  DB_USERNAME: admin
+  DB_PASSWORD: Password@123
+  credentials.txt: |
+    username=admin
+    password=Password@123
+```
+
+Apply:
+
+```bash
+kubectl apply -f secret.yaml
+```
+
+Verify:
+
+```bash
+kubectl get secrets
+
+kubectl describe secret app-secret
+```
+
+Expected:
+
+```text
+NAME
+app-secret
+```
+
+---
+
+# Step 3: Create Deployment
+
+This deployment demonstrates:
+
+* ConfigMap as Environment Variable
+* ConfigMap as Volume
+* Secret as Environment Variable
+* Secret as Volume
+
+## deployment.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-secret-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-secret-demo
+  template:
+    metadata:
+      labels:
+        app: config-secret-demo
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        env:
+        - name: APP_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: APP_NAME
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: ENVIRONMENT
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secret
+              key: DB_PASSWORD
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        - name: secret-volume
+          mountPath: /secrets
+          readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config
+      - name: secret-volume
+        secret:
+          secretName: app-secret
+```
+
+Apply:
+
+```bash
+kubectl apply -f deployment.yaml
+```
+
+Verify:
+
+```bash
+kubectl get deployments
+
+kubectl get pods
+```
+
+Expected:
+
+```text
+READY   STATUS
+1/1     Running
+```
+
+---
+
+# Step 4: Verify Environment Variables
+
+Get Pod Name:
+
+```bash
+kubectl get pods
+```
+
+Example:
+
+```text
+config-secret-demo-xxxxx
+```
+
+Enter Pod:
+
+```bash
+kubectl exec -it <pod-name> -- sh
+```
+
+Verify ConfigMap Environment Variables:
+
+```bash
+env | grep APP
+```
+
+Expected:
+
+```text
+APP_NAME=Kubernetes Bootcamp
+```
+
+Verify:
+
+```bash
+env | grep ENVIRONMENT
+```
+
+Expected:
+
+```text
+ENVIRONMENT=Development
+```
+
+Verify Secret Environment Variables:
+
+```bash
+env | grep DB
+```
+
+Expected:
+
+```text
+DB_USERNAME=admin
+DB_PASSWORD=Password@123
+```
+
+---
+
+# Step 5: Verify ConfigMap Volume
+
+Inside Pod:
+
+```bash
+ls /config
+```
+
+Expected:
+
+```text
+APP_NAME
+ENVIRONMENT
+LOG_LEVEL
+app.properties
+```
+
+View File:
+
+```bash
+cat /config/app.properties
+```
+
+Expected:
+
+```text
+app.name=Kubernetes Bootcamp
+environment=Development
+log.level=INFO
+```
+
+---
+
+# Step 6: Verify Secret Volume
+
+Inside Pod:
+
+```bash
+ls /secrets
+```
+
+Expected:
+
+```text
+DB_PASSWORD
+DB_USERNAME
+credentials.txt
+```
+
+View Secret File:
+
+```bash
+cat /secrets/credentials.txt
+```
+
+Expected:
+
+```text
+username=admin
+password=Password@123
+```
+
+---
+
+# ConfigMap Update Demo
+
+## Update ConfigMap
+
+```bash
+kubectl edit configmap app-config
+```
+
+Change:
+
+```text
+Development
+```
+
+to:
+
+```text
+Production
+```
+
+Save and exit.
+
+---
+
+## Verify Mounted File
+
+```bash
+kubectl exec -it <pod-name> -- cat /config/app.properties
+```
+
+Expected:
+
+```text
+environment=Production
+```
+
+---
+
+## Verify Environment Variable
+
+```bash
+kubectl exec -it <pod-name> -- env | grep ENVIRONMENT
+```
+
+Expected:
+
+```text
+ENVIRONMENT=Development
+```
+
+Notice the old value remains.
+
+---
+
+# Important Learning Point
+
+ConfigMap mounted as Volume:
+
+```text
+Auto Updates
+```
+
+ConfigMap used as Environment Variable:
+
+```text
+Requires Pod Restart
+```
+
+---
+
+# Demonstrate Environment Variable Refresh
+
+Restart Deployment:
+
+```bash
+kubectl rollout restart deployment config-secret-demo
+```
+
+Wait:
+
+```bash
+kubectl get pods -w
+```
+
+Verify:
+
+```bash
+kubectl exec -it <new-pod-name> -- env | grep ENVIRONMENT
+```
+
+Expected:
+
+```text
+ENVIRONMENT=Production
+```
+
+---
+
+# Production Troubleshooting Scenario
+
+## Scenario
+
+A deployment suddenly starts failing after a rollout.
+
+Pods show:
+
+```text
+CreateContainerConfigError
+```
+
+---
+
+# Simulate Failure
+
+Delete ConfigMap:
+
+```bash
+kubectl delete configmap app-config
+```
+
+Verify Pod:
+
+```bash
+kubectl get pods
+```
+
+Existing Pod continues running.
+
+Expected:
+
+```text
+Running
+```
+
+---
+
+# Why Does the Pod Continue Running?
+
+Because:
+
+```text
+Pod already started
+
+ConfigMap already mounted
+
+Environment variables already injected
+```
+
+No restart has occurred.
+
+---
+
+# Trigger Failure
+
+Delete Running Pod:
+
+```bash
+kubectl delete pod <pod-name>
+```
+
+Deployment creates a new Pod automatically.
+
+Check:
+
+```bash
+kubectl get pods
+```
+
+Expected:
+
+```text
+CreateContainerConfigError
+```
+
+---
+
+# Investigate the Error
+
+Describe Pod:
+
+```bash
+kubectl describe pod <pod-name>
+```
+
+Expected:
+
+```text
+Error: configmap "app-config" not found
+```
+
+---
+
+# Troubleshooting Steps
+
+## Step 1
+
+Check Pod Status:
+
+```bash
+kubectl get pods
+```
+
+Output:
+
+```text
+CreateContainerConfigError
+```
+
+---
+
+## Step 2
+
+Describe Pod:
+
+```bash
+kubectl describe pod <pod-name>
+```
+
+Look for:
+
+```text
+configmap not found
+```
+
+or
+
+```text
+secret not found
+```
+
+---
+
+## Step 3
+
+Verify Resource Existence
+
+```bash
+kubectl get configmap
+
+kubectl get secret
+```
+
+---
+
+## Step 4
+
+Recreate Missing Resource
+
+```bash
+kubectl apply -f configmap.yaml
+```
+
+or
+
+```bash
+kubectl apply -f secret.yaml
+```
+
+---
+
+## Step 5
+
+Restart Deployment
+
+```bash
+kubectl rollout restart deployment config-secret-demo
+```
+
+---
+
+## Step 6
+
+Verify Recovery
+
+```bash
+kubectl get pods
+```
+
+Expected:
+
+```text
+Running
+```
+
+---
+
+# Secret Failure Demo
+
+Delete Secret:
+
+```bash
+kubectl delete secret app-secret
+```
+
+Delete Running Pod:
+
+```bash
+kubectl delete pod <pod-name>
+```
+
+Verify:
+
+```bash
+kubectl get pods
+```
+
+Expected:
+
+```text
+CreateContainerConfigError
+```
+
+Investigate:
+
+```bash
+kubectl describe pod <pod-name>
+```
+
+Expected:
+
+```text
+Error: secret "app-secret" not found
+```
+
+---
+
+# Cleanup
+
+Delete Deployment:
+
+```bash
+kubectl delete deployment config-secret-demo
+```
+
+Delete ConfigMap:
+
+```bash
+kubectl delete configmap app-config
+```
+
+Delete Secret:
+
+```bash
+kubectl delete secret app-secret
+```
+
+---
+
+# Key Learning Outcomes
+
+1. What ConfigMaps are.
+2. What Secrets are.
+3. ConfigMap as Environment Variables.
+4. ConfigMap as Mounted Files.
+5. Secret as Environment Variables.
+6. Secret as Mounted Files.
+7. Difference between ConfigMap and Secret.
+8. ConfigMap Volume Auto Updates.
+9. Environment Variables Require Pod Restart.
+10. Understanding CreateContainerConfigError.
+11. Troubleshooting Missing ConfigMaps.
+12. Troubleshooting Missing Secrets.
+13. Real-world Production Rollout Failure Scenario.
+
