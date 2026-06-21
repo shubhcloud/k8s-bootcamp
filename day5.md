@@ -1336,13 +1336,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mysql
-
 spec:
   clusterIP: None
-
   selector:
     app: mysql
-
   ports:
   - port: 3306
     name: mysql
@@ -1641,12 +1638,11 @@ Data still exists.
 
 Verify DNS Resolution:
 
-```bash
-kubectl run dns-test \
+```bashkubectl run dns-test \
 --image=busybox:1.35 \
 -it \
 --rm \
--- nslookup mysql-0.mysql
+-- nslookup mysql-0.mysql.default.svc.cluster.local
 ```
 
 Expected:
@@ -1665,7 +1661,7 @@ kubectl run dns-test \
 --image=busybox:1.35 \
 -it \
 --rm \
--- nslookup mysql-1.mysql
+-- nslookup mysql-1.mysql.default.svc.cluster.local
 ```
 
 Expected:
