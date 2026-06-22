@@ -1,8 +1,8 @@
-# Kubernetes Scheduling Labs (AKS)
+# Kubernetes Scheduling Labs on AKS (Deployment Based)
 
-## Lab Setup
+## Lab Environment
 
-Assume an AKS Cluster with 3 Worker Nodes.
+AKS Cluster with 3 Worker Nodes
 
 | Node     | Label       |
 | -------- | ----------- |
@@ -12,19 +12,16 @@ Assume an AKS Cluster with 3 Worker Nodes.
 
 ---
 
-# Verify Nodes
+# Initial Setup
+
+## Verify Nodes
 
 ```bash
 kubectl get nodes
-```
-
-```bash
 kubectl get nodes --show-labels
 ```
 
----
-
-# Apply Labels
+## Apply Labels
 
 ```bash
 kubectl label node worker-1 env=dev
@@ -40,178 +37,232 @@ kubectl get nodes --show-labels
 
 ---
 
-# Node Selector
+# LAB 1 - Node Selector
 
 ## node-selector.yaml
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: nginx-dev
 spec:
-  nodeSelector:
-    env: dev
+  replicas: 3
 
-  containers:
-  - name: nginx
-    image: nginx
+  selector:
+    matchLabels:
+      app: nginx-dev
+
+  template:
+    metadata:
+      labels:
+        app: nginx-dev
+
+    spec:
+      nodeSelector:
+        env: dev
+
+      containers:
+      - name: nginx
+        image: nginx
 ```
 
-Deploy:
+Deploy
 
 ```bash
 kubectl apply -f node-selector.yaml
 ```
 
-Verify:
+Verify
 
 ```bash
-kubectl get pod -o wide
+kubectl get pods -o wide
 ```
 
 Expected:
 
 ```text
-nginx-dev -> worker-1
+All replicas on worker-1
 ```
 
 ---
 
 ## Simulation
 
-Remove label:
+Remove Label
 
 ```bash
 kubectl label node worker-1 env-
 ```
 
-Pod remains running.
-
-Delete pod:
+Check Pods
 
 ```bash
-kubectl delete pod nginx-dev
+kubectl get pods -o wide
 ```
 
 Result:
 
 ```text
-Pending
+Pods continue running
 ```
 
 Reason:
 
-Node Selector is checked only during scheduling.
+```text
+Node Selector is evaluated only during scheduling.
+```
 
 ---
 
-# Required Node Affinity
+## Rollout Restart
+
+```bash
+kubectl rollout restart deployment nginx-dev
+```
+
+Check:
+
+```bash
+kubectl get pods
+```
+
+Result:
+
+```text
+Pods remain Pending
+```
+
+---
+
+# LAB 2 - Required Node Affinity
 
 ## required-node-affinity.yaml
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: prod-app
 
 spec:
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: env
-            operator: In
-            values:
-            - prod
+  replicas: 3
 
-  containers:
-  - name: nginx
-    image: nginx
+  selector:
+    matchLabels:
+      app: prod-app
+
+  template:
+    metadata:
+      labels:
+        app: prod-app
+
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: env
+                operator: In
+                values:
+                - prod
+
+      containers:
+      - name: nginx
+        image: nginx
 ```
 
-Deploy:
+Deploy
 
 ```bash
 kubectl apply -f required-node-affinity.yaml
 ```
 
-Verify:
+Verify
 
 ```bash
-kubectl get pod -o wide
+kubectl get pods -o wide
 ```
 
 Expected:
 
 ```text
-worker-3
+All replicas on worker-3
 ```
 
 ---
 
 ## Simulation
 
-Remove label:
+Remove Label
 
 ```bash
 kubectl label node worker-3 env-
 ```
 
-Result:
+Pods remain running.
 
-```text
-Pod continues running
-```
-
-Delete pod:
+Restart Deployment
 
 ```bash
-kubectl delete pod prod-app
+kubectl rollout restart deployment prod-app
 ```
 
-Result:
+Result
 
 ```text
-Pending
+Pods Pending
 ```
 
-Reason:
+Reason
 
+```text
 requiredDuringSchedulingIgnoredDuringExecution
+```
 
 ---
 
-# Preferred Node Affinity
+# LAB 3 - Preferred Node Affinity
 
 ## preferred-node-affinity.yaml
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: monitoring-app
 
 spec:
-  affinity:
-    nodeAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        preference:
-          matchExpressions:
-          - key: env
-            operator: In
-            values:
-            - staging
+  replicas: 3
 
-  containers:
-  - name: nginx
-    image: nginx
+  selector:
+    matchLabels:
+      app: monitoring-app
+
+  template:
+    metadata:
+      labels:
+        app: monitoring-app
+
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: env
+                operator: In
+                values:
+                - staging
+
+      containers:
+      - name: nginx
+        image: nginx
 ```
 
-Deploy:
+Deploy
 
 ```bash
 kubectl apply -f preferred-node-affinity.yaml
@@ -220,80 +271,94 @@ kubectl apply -f preferred-node-affinity.yaml
 Expected:
 
 ```text
-worker-2 preferred
+Prefer worker-2
 ```
 
 ---
 
 ## Simulation
 
-Remove label:
+Remove Label
 
 ```bash
 kubectl label node worker-2 env-
 ```
 
-Delete pod:
+Restart
 
 ```bash
-kubectl delete pod monitoring-app
+kubectl rollout restart deployment monitoring-app
 ```
 
-Result:
+Result
 
 ```text
-Pod scheduled on any available node
+Pods scheduled on any available node
 ```
 
-Reason:
+Reason
 
-Preferred = Soft Rule
+```text
+Soft Rule
+```
 
 ---
 
-# Node Anti-Affinity
+# LAB 4 - Node Anti-Affinity
 
 ## node-anti-affinity.yaml
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: no-dev-app
 
 spec:
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: env
-            operator: NotIn
-            values:
-            - dev
+  replicas: 3
 
-  containers:
-  - name: nginx
-    image: nginx
+  selector:
+    matchLabels:
+      app: no-dev-app
+
+  template:
+    metadata:
+      labels:
+        app: no-dev-app
+
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: env
+                operator: NotIn
+                values:
+                - dev
+
+      containers:
+      - name: nginx
+        image: nginx
 ```
 
-Deploy:
-
-```bash
-kubectl apply -f node-anti-affinity.yaml
-```
-
-Expected:
+Expected
 
 ```text
-worker-2 or worker-3
+Pods only on worker-2 and worker-3
+```
+
+Never:
+
+```text
+worker-1
 ```
 
 ---
 
-# Backend Deployment
+# LAB 5 - Pod Affinity
 
-## backend.yaml
+## Backend Deployment
 
 ```yaml
 apiVersion: apps/v1
@@ -319,7 +384,7 @@ spec:
         image: nginx
 ```
 
-Deploy:
+Deploy
 
 ```bash
 kubectl apply -f backend.yaml
@@ -327,67 +392,89 @@ kubectl apply -f backend.yaml
 
 ---
 
-# Pod Affinity
-
-## pod-affinity.yaml
+## frontend-affinity.yaml
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: frontend
 
 spec:
-  affinity:
-    podAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchLabels:
-            app: backend
-        topologyKey: kubernetes.io/hostname
+  replicas: 3
 
-  containers:
-  - name: nginx
-    image: nginx
+  selector:
+    matchLabels:
+      app: frontend
+
+  template:
+    metadata:
+      labels:
+        app: frontend
+
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: backend
+            topologyKey: kubernetes.io/hostname
+
+      containers:
+      - name: nginx
+        image: nginx
 ```
 
-Deploy:
+Deploy
 
 ```bash
-kubectl apply -f pod-affinity.yaml
+kubectl apply -f frontend-affinity.yaml
 ```
 
-Verify:
+Verify
 
 ```bash
 kubectl get pods -o wide
 ```
 
-Expected:
+Expected
 
 ```text
-frontend and backend on same node
+Frontend replicas scheduled on backend node
 ```
 
 ---
 
 ## Simulation
 
-Delete backend pod:
+Delete Backend Pod
 
 ```bash
-kubectl delete pod <backend-pod>
+kubectl delete pod <backend-pod-name>
 ```
 
-Frontend remains running.
+Observe
 
-Reason:
+```bash
+kubectl get pods -o wide
+```
 
+Result
+
+```text
+Frontend remains running
+```
+
+Reason
+
+```text
 IgnoredDuringExecution
+```
 
 ---
 
-# Pod Anti-Affinity
+# LAB 6 - Pod Anti-Affinity
 
 ## pod-anti-affinity.yaml
 
@@ -423,57 +510,54 @@ spec:
         image: nginx
 ```
 
-Deploy:
+Deploy
 
 ```bash
 kubectl apply -f pod-anti-affinity.yaml
 ```
 
-Verify:
-
-```bash
-kubectl get pods -o wide
-```
-
-Expected:
+Expected
 
 ```text
-worker-1 -> web-1
-worker-2 -> web-2
-worker-3 -> web-3
+worker-1 -> web-pod-1
+worker-2 -> web-pod-2
+worker-3 -> web-pod-3
 ```
 
 ---
 
 ## Simulation
 
-Scale deployment:
+Scale
 
 ```bash
 kubectl scale deployment web --replicas=4
 ```
 
-Result:
+Result
 
 ```text
-4th pod Pending
+3 Running
+1 Pending
 ```
 
-Reason:
+Reason
 
-Only 3 nodes available.
+```text
+Only 3 nodes exist.
+```
 
 ---
 
-# Apply Taints
+# LAB 7 - Taints
 
-## Taint Production Node
+Apply Taint
 
 ```bash
 kubectl taint node worker-3 env=prod:NoSchedule
 ```
 
-Verify:
+Verify
 
 ```bash
 kubectl describe node worker-3
@@ -481,283 +565,277 @@ kubectl describe node worker-3
 
 ---
 
-# Test Taint
-
-## normal-pod.yaml
+## Deployment Without Toleration
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: test-pod
+  name: regular-app
 
 spec:
-  containers:
-  - name: nginx
-    image: nginx
+  replicas: 5
+
+  selector:
+    matchLabels:
+      app: regular-app
+
+  template:
+    metadata:
+      labels:
+        app: regular-app
+
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
 ```
 
-Deploy:
+Deploy
 
 ```bash
-kubectl apply -f normal-pod.yaml
+kubectl apply -f regular-app.yaml
 ```
 
-Result:
+Expected
 
 ```text
-Will not schedule on worker-3
+Pods avoid worker-3
 ```
 
 ---
 
-# Toleration
+# LAB 8 - Tolerations
 
 ## toleration.yaml
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: prod-pod
+  name: prod-toleration
 
 spec:
+  replicas: 5
 
-  tolerations:
-  - key: env
-    operator: Equal
-    value: prod
-    effect: NoSchedule
+  selector:
+    matchLabels:
+      app: prod-toleration
 
-  containers:
-  - name: nginx
-    image: nginx
+  template:
+    metadata:
+      labels:
+        app: prod-toleration
+
+    spec:
+
+      tolerations:
+      - key: env
+        operator: Equal
+        value: prod
+        effect: NoSchedule
+
+      containers:
+      - name: nginx
+        image: nginx
 ```
 
-Deploy:
+Deploy
 
 ```bash
 kubectl apply -f toleration.yaml
 ```
 
-Result:
+Result
 
 ```text
-Allowed to run on worker-3
+Pods MAY run on worker-3
 ```
 
-Not guaranteed.
+Important:
+
+```text
+Toleration grants permission.
+It does not force placement.
+```
 
 ---
 
-# Force Placement Using Toleration + Node Affinity
+# LAB 9 - Dedicated Production Nodes
 
 ## dedicated-prod.yaml
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: prod-workload
+  name: dedicated-prod
 
 spec:
+  replicas: 3
 
-  tolerations:
-  - key: env
-    operator: Equal
-    value: prod
-    effect: NoSchedule
+  selector:
+    matchLabels:
+      app: dedicated-prod
 
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: env
-            operator: In
-            values:
-            - prod
+  template:
+    metadata:
+      labels:
+        app: dedicated-prod
 
-  containers:
-  - name: nginx
-    image: nginx
+    spec:
+
+      tolerations:
+      - key: env
+        operator: Equal
+        value: prod
+        effect: NoSchedule
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: env
+                operator: In
+                values:
+                - prod
+
+      containers:
+      - name: nginx
+        image: nginx
 ```
 
-Result:
+Expected
 
 ```text
-Must run on worker-3
+All replicas on worker-3
 ```
 
 ---
 
-# NoExecute Taint
+# LAB 10 - NoExecute Taint
 
-Apply:
+Apply
 
 ```bash
 kubectl taint node worker-3 env=prod:NoExecute
 ```
 
-Pods without matching toleration:
-
-```text
-Evicted Immediately
-```
-
----
-
-# NoExecute Toleration
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: app
-
-spec:
-
-  tolerations:
-  - key: env
-    operator: Equal
-    value: prod
-    effect: NoExecute
-    tolerationSeconds: 60
-
-  containers:
-  - name: nginx
-    image: nginx
-```
-
-Behavior:
-
-```text
-Runs for 60 seconds
-Then evicted
-```
-
----
-
-# Useful Troubleshooting Commands
-
-## View Labels
-
-```bash
-kubectl get nodes --show-labels
-```
-
-## Add Label
-
-```bash
-kubectl label node worker-1 env=dev
-```
-
-## Remove Label
-
-```bash
-kubectl label node worker-1 env-
-```
-
-## View Taints
-
-```bash
-kubectl describe node worker-3
-```
-
-## Add Taint
-
-```bash
-kubectl taint node worker-3 env=prod:NoSchedule
-```
-
-## Remove Taint
-
-```bash
-kubectl taint node worker-3 env=prod:NoSchedule-
-```
-
-## Pod Placement
+Observe
 
 ```bash
 kubectl get pods -o wide
 ```
 
-## Pod Events
+Result
+
+```text
+Pods without toleration are evicted.
+```
+
+---
+
+## NoExecute Toleration
+
+```yaml
+tolerations:
+- key: env
+  operator: Equal
+  value: prod
+  effect: NoExecute
+  tolerationSeconds: 60
+```
+
+Behavior
+
+```text
+Pod survives for 60 seconds
+Then gets evicted
+```
+
+---
+
+# Scheduler Troubleshooting Lab
+
+Create Impossible Affinity
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: impossible-affinity
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: impossible-affinity
+
+  template:
+    metadata:
+      labels:
+        app: impossible-affinity
+
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: env
+                operator: In
+                values:
+                - qa
+
+      containers:
+      - name: nginx
+        image: nginx
+```
+
+Deploy
 
 ```bash
+kubectl apply -f impossible-affinity.yaml
+```
+
+Check
+
+```bash
+kubectl get pods
 kubectl describe pod <pod-name>
 ```
 
-## Scheduler Errors
-
-Common Messages:
+Expected Error
 
 ```text
 0/3 nodes are available
 node(s) didn't match Pod affinity
-node(s) didn't match Pod anti-affinity
-node(s) didn't match node selector
-node(s) had untolerated taint
 ```
 
 ---
 
-# Important Exam / Interview Questions
+# Useful Commands
 
-### Does removing a node label evict running pods?
+```bash
+kubectl get nodes --show-labels
 
-No.
+kubectl get pods -o wide
 
-Because Kubernetes supports:
+kubectl describe node worker-3
 
-```text
-requiredDuringSchedulingIgnoredDuringExecution
-preferredDuringSchedulingIgnoredDuringExecution
+kubectl describe pod <pod-name>
+
+kubectl rollout restart deployment <deployment-name>
+
+kubectl scale deployment <deployment-name> --replicas=5
+
+kubectl taint node worker-3 env=prod:NoSchedule
+
+kubectl taint node worker-3 env=prod:NoSchedule-
+
+kubectl label node worker-1 env=dev
+
+kubectl label node worker-1 env-
 ```
-
-not:
-
-```text
-requiredDuringSchedulingRequiredDuringExecution
-```
-
----
-
-### Does a toleration force a pod onto a node?
-
-No.
-
-Toleration only grants permission.
-
-Use:
-
-```text
-Toleration + Node Affinity
-```
-
-or
-
-```text
-Toleration + Node Selector
-```
-
-to force placement.
-
----
-
-### Which workloads commonly use taints?
-
-* GPU Nodes
-* Database Nodes
-* Monitoring Nodes
-* Security Appliances
-* Dedicated Production Node Pools
-
----
-
-### Which workloads commonly use Pod Anti-Affinity?
-
-* Frontend replicas
-* API replicas
-* Stateful applications
-* High Availability workloads
