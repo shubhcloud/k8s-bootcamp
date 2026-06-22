@@ -739,12 +739,35 @@ Pods without toleration are evicted.
 ## NoExecute Toleration
 
 ```yaml
-tolerations:
-- key: env
-  operator: Equal
-  value: prod
-  effect: NoExecute
-  tolerationSeconds: 60
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noexecute-demo
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: noexecute-demo
+
+  template:
+    metadata:
+      labels:
+        app: noexecute-demo
+
+    spec:
+
+      tolerations:
+      - key: "env"
+        operator: "Equal"
+        value: "prod"
+        effect: "NoExecute"
+
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
 ```
 
 Behavior
@@ -753,65 +776,10 @@ Behavior
 Pod survives for 60 seconds
 Then gets evicted
 ```
-
----
-
-# Scheduler Troubleshooting Lab
-
-Create Impossible Affinity
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: impossible-affinity
-
-spec:
-  replicas: 1
-
-  selector:
-    matchLabels:
-      app: impossible-affinity
-
-  template:
-    metadata:
-      labels:
-        app: impossible-affinity
-
-    spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: env
-                operator: In
-                values:
-                - qa
-
-      containers:
-      - name: nginx
-        image: nginx
+- First apply the file
+- Then remove the taint. if this is not removed it will prevent the pod from getting schedule.
 ```
-
-Deploy
-
-```bash
-kubectl apply -f impossible-affinity.yaml
-```
-
-Check
-
-```bash
-kubectl get pods
-kubectl describe pod <pod-name>
-```
-
-Expected Error
-
-```text
-0/3 nodes are available
-node(s) didn't match Pod affinity
+kubectl taint node worker-3 env=prod:NoSchedule-
 ```
 
 ---
