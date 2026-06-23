@@ -177,3 +177,119 @@ kubectl apply -f loadbalncer.yaml
 ```
 ### Access the application
 - For accessing the application you can copy the load balancer dns and run it in the browser.
+
+# Network Policy
+
+### Create Pod A
+
+**pod-ns-a.yaml**
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: namespace-a
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod-a
+  namespace: namespace-a
+  labels:
+    app: frontend
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+```
+### Create Pod B
+
+**pod-ns-b.yaml**
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: namespace-b
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod-b
+  namespace: namespace-b
+  labels:
+    app: backend
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+```
+### Create Pod C
+
+**pod-ns-c.yaml**
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: namespace-c
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod-db
+  namespace: namespace-c
+  labels:
+    app: db
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod-microservice
+  namespace: namespace-c
+  labels:
+    app: microservice
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+```
+### Create Network Policy
+**np.yaml**
+```
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-deny-egress
+  namespace: namespace-a
+spec:
+  podSelector: {} # Select all pods in Namespace A
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: namespace-b # Allow traffic from all pods in namespace B
+    - podSelector:
+        matchLabels:
+          app: microservice # Allow traffic from a specific pod in namespace C
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: namespace-c # Namespace C
+  egress: []
+```
+### Test connection
+```
+curl <pod ip>
+```
