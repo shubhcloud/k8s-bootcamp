@@ -53,11 +53,11 @@ kubectl apply -f deploy-recreate.yaml
 kubectl get pods -l app=portal-recreate
 ```
 
-# Now Set new immage for deployment
+### Now Set new immage for deployment
 ```
 kubectl set image deployment/recreate-deployment my-app-container=nginx:latest
 ```
-# Watch pods — all terminate, then new ones start (DOWNTIME here!)
+### Watch pods — all terminate, then new ones start (DOWNTIME here!)
 ```
 kubectl get pods -l app=portal-recreate -w
 ```
@@ -127,23 +127,23 @@ spec:
 ```bash
 kubectl apply -f deploy-rolling.yaml
 ```
-# Update nginx:1.20-perl → nginx:1.25.5 → nginx:1.26.0 → nginx:latest(rolling)
+### Update nginx:1.20-perl → nginx:1.25.5 → nginx:1.26.0 → nginx:latest(rolling)
 ```
 kubectl set image deployment/nginx web=nginx:1.25.5
 ```
-# Watch pods roll one by one
+### Watch pods roll one by one
 ```
 kubectl rollout status deployment/nginx
 ```
-# Check rollout history
+### Check rollout history
 ```
 kubectl rollout history deployment/nginx
 ```
-# Annotate the rollout history
+### Annotate the rollout history
 ```
 kubectl annotate deployment/nginx kubernetes.io/change-cause="image updated to 1.25.5"
 ```
-# Rollback to specific version if needed
+### Rollback to specific version if needed
 ```
 kubectl rollout undo deployment/nginx --to-revision=2
 ```
