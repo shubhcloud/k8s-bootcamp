@@ -1,30 +1,159 @@
+# Request and Limits
+### CPU Demo
+
+**cpu-demo.yaml**
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cpu-demo
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    command: ['sh', '-c', 'sleep 1000']
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+```
+- Apply the file
+  ```
+  kubectl apply -f cpu-demo.yaml
+  ```
+### Generate the CPU load
+```
+kubectl exec -it cpu-demo -- sh -c '
+while :; do :; done &
+while :; do :; done &
+while :; do :; done &
+while :; do :; done &
+while :; do :; done &
+while :; do :; done &
+while :; do :; done &
+while :; do :; done &
+wait
+'
+```
+### Monitor the CPU utilization
+- wait for until 1 to 2 mins till the cpu reach its limits
+```
+watch kubectl top pods
+```
+### Memory Demo with OOM killed
+
+**memory-demo.yaml**
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: memory-demo
+spec:
+  containers:
+  - name: stress-ctr
+    image: polinux/stress
+    command: ["stress"]
+    args: ["--vm", "1", "--vm-bytes", "150M", "--vm-hang", "1"]
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+```
+- Apply the yaml
+```
+kubectl apply -f memory-demo.yaml
+```
+
+# HPA
+
+**php-pod.yaml**
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-apache
+spec:
+  selector:
+    matchLabels:
+      run: php-apache
+  template:
+    metadata:
+      labels:
+        run: php-apache
+    spec:
+      containers:
+      - name: php-apache
+        image: registry.k8s.io/hpa-example
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: 500m
+          requests:
+            cpu: 200m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-apache
+  labels:
+    run: php-apache
+spec:
+  ports:
+  - port: 80
+  selector:
+    run: php-apache
+```
+- Apply the yaml file
+```
+kubectl apply -f php-pod.yaml
+```
+### HPA Pod
+
+**hpa.yaml**
+
+```
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: apache-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: php-apache
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 30
+```
+- Applly HPA
+```
+kubectl apply -f hpa.yaml
+```
+### Load Testing
+- Once both sample application and hpa is deployed the you can run the below command to generate the load.
+```
+kubectl run -i --tty load-generator --rm --image=busybox:1.28 --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://php-apache; done"
+```
+### List the HPA
+- After runing the load generator command. you can list the HPA wit watch command to check live status of cpu utilization getting increased
+```
+watch kubectl get HPA php-apache
+```
 # Kubernetes Probes
-
-# Lab Objectives
-
-In this lab you will learn:
-
-* Readiness Probe
-* Liveness Probe
-* Startup Probe
-* How probes fail
-* How Kubernetes reacts
-* How to troubleshoot probe failures
-* How to restore applications back to healthy state
-
----
-
-# Verify Cluster
-
-```bash
-kubectl get nodes
-```
-
-```bash
-kubectl get pods -A
-```
-
----
 
 # Section 1 - Readiness Probe
 
