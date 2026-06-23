@@ -63,14 +63,12 @@ kubectl get pods -l app=portal-recreate -w
 ```
 
 **🔑 Observation:** All 3 pods terminate at the same time → service unavailable during that gap.
-```
 
 ## Strategy 2 — Rolling Update (15–25 min)
 
 **What it does:** Gradually replaces old pods with new ones. Zero downtime.
 
 **When to use:** Most production web apps. Default Kubernetes behavior.
-
 
 - **MaxSurge** means The number of pod that you want to bring up before terminating the old pods**
 - **maxUnavailable** it means  the maximum number of Pods that can be unavailable during the update process.
