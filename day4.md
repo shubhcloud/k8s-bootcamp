@@ -386,7 +386,8 @@ spec:
         command:
         - /bin/sh
         - -c
-        - "nginx -g 'daemon off;' && exit 1"
+        - |
+          cat /tmp/file-does-not-exist
 
         ports:
         - containerPort: 80
