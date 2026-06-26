@@ -25,7 +25,7 @@ az aks create \
 ```
 ### 4. Connect kubectl to the cluster
 ```
-az aks get-credentials --resource-group k8s-bootcamp --name bootcamp-cluster
+az aks get-credentials --resource-group k8s-bootcamp --name k8s-bootcamp
 ```
 ### 5. Verify connection
 ```
