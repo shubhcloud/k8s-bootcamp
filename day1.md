@@ -145,17 +145,15 @@ kubectl describe pod <pod-name>
 ```
 kubectl logs <pod-name> -n facebook
 ```
-# DEBUG
-
 **Shell into pod**
 ```
 kubectl exec -it <pod-name> -- /bin/sh
 ```
-# EVENTS
+### check Events
 ```
 kubectl get events
 ```
-# RESOURCE USAGE
+### Check RESOURCE USAGE
 ```
 kubectl top nodes
 ```
