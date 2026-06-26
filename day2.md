@@ -39,7 +39,7 @@ spec:
     env: dev
   type: ClusterIP
   ports:
-  - port: 8080                  # This is the port that the service will get expose
+  - port: 80                  # This is the port that the service will get expose
     targetPort: 80              # This is the port on the pod (containerPort) that the service forwards traffic to
 ```
 - Apply pod.yaml
@@ -47,15 +47,7 @@ spec:
 kubectl apply -f clusterip.yaml
 ```
 ### Access the application
-- First exec into the pod
-```
-kubectl exec -it webserver -n prod -- sh
-```
-- Then run the curl command inside from webserver pod
-```
-curl <svc ip of httpd-clusterip>
-```
-- You can also run the curl command within the cluster
+- You can run the curl command within the cluster
 ```
 curl <svc ip of httpd-clusterip>
 ```
