@@ -638,8 +638,23 @@ app-config
 
 # Step 2: Create Secret
 
-For demo purposes use stringData.
-
+- Create secret value for password
+```
+echo -n "Password@123" | base64
+```
+- Create secret value for Username
+```
+echo -n "admin" | base64
+```
+- Create a file cred.txt and add below details.
+```
+username=admin
+password=Password@123
+```
+- Create a secret value
+```
+cat cred.txt | base64
+```
 ## secret.yaml
 
 ```yaml
@@ -648,12 +663,10 @@ kind: Secret
 metadata:
   name: app-secret
 type: Opaque
-stringData:
-  DB_USERNAME: admin
-  DB_PASSWORD: Password@123
-  credentials.txt: |
-    username=admin
-    password=Password@123
+data:
+  DB_USERNAME: YWRtaW4=
+  DB_PASSWORD: UGFzc3dvcmRAMTIz
+  credentials.txt: dXNlcm5hbWU9YWRtaW4KcGFzc3dvcmQ9UGFzc3dvcmRAMTIzCg==
 ```
 
 Apply:
@@ -661,7 +674,10 @@ Apply:
 ```bash
 kubectl apply -f secret.yaml
 ```
-
+- Decode directly from yaml value
+```
+echo "UGFzc3dvcmRAMTIz" | base64 --decode
+```
 Verify:
 
 ```bash
