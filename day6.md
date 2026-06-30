@@ -166,9 +166,6 @@ spec:
     app: green
 ```
 
-
----
-
 ## Step 4 — HTTPRoute: domain-Based Routing (15 min)
 
 **`domain-route.yaml`**
@@ -217,7 +214,7 @@ kubectl get httproute
 
 This is native canary in Gateway API — no pod-count tricks needed!
 
-**`httproute-weights.yaml`**
+**httproute-weights.yaml**
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
