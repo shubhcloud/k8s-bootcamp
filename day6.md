@@ -211,8 +211,7 @@ spec:
 ```bash
 kubectl apply -f domain-route.yaml path-route.yaml
 kubectl get httproute
-
----
+```
 
 ## Step 5 — HTTPRoute: Weight-Based Traffic Splitting (15 min)
 
